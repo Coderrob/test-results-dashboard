@@ -1,0 +1,63 @@
+name: Test Result Insights
+
+on:
+  push:
+    branches: ['main']
+  workflow_dispatch:
+
+env:
+  CI: true
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  deploy:
+    name: Deploy results
+    runs-on: ubuntu-20.04
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
+
+      # ————————————————————————————————————————————————————————————————————————
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      # ————————————————————————————————————————————————————————————————————————
+
+      - name: GitHub Action for Yarn
+        uses: Borales/actions-yarn@v5.0.0
+        with:
+          cmd: install # will run `yarn install` command
+
+      # ————————————————————————————————————————————————————————————————————————
+
+      - name: Install Node dependencies
+        # `production` to exclude dev. dependencies
+        run: NODE_ENV=production yarn install
+
+      - name: Build demo website (dist)
+        run: 'NODE_ENV=production pnpm run build'
+
+      # ————————————————————————————————————————————————————————————————————————
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ./dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
